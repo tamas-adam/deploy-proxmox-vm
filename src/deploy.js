@@ -102,12 +102,10 @@ async function resizeVm(vmId, size) {
 }
 
 async function configureVm(vmId, cidr, name) {
-  const ipconfig0 = `ip=${cidr},gw=10.0.0.1`;
-  console.log(ipconfig0);
   const config = {
     name,
     searchdomain: name,
-    ipconfig0,
+    ipconfig0: `ip=${cidr},gw=10.0.0.1`,
     cicustom: "user=local:snippets/mattermost-setup.yaml",
     onboot: 1,
   };
