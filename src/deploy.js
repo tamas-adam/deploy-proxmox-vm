@@ -23,7 +23,6 @@ async function pveRequest(method, path, body) {
         path,
         method,
         headers,
-        body: body ? body : null,
         // Proxmox certificate issue workaround
         rejectUnauthorized: false,
       };
