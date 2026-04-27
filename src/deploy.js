@@ -117,6 +117,13 @@ async function configureVm(vmId, cidr, name) {
   );
 }
 
+async function startVm(vmId) {
+  return pveJsonRequest(
+    "POST",
+    `/api2/json/nodes/${process.env.PVE_NODE_NAME}/qemu/${vmId}/status/start`,
+  );
+}
+
 async function extractLxcIp(vmId) {
   const { data: interfaces } = await getLxcInterfaces(vmId);
   const iface = interfaces.find((it) => it.name === "eth0");
@@ -215,7 +222,9 @@ async function run() {
   await resizeVm(nextId, "+15G");
   console.log("Applying VM configuration...");
   await configureVm(nextId, `${nextIp}/24`, "script-test");
-  console.log("VM has been cloned successfully!");
+
+  console.log("VM has been cloned successfully, starting...");
+  await startVm(nextId);
 }
 
 run()
