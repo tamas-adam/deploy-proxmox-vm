@@ -166,7 +166,7 @@ function ipToInt(ip) {
 }
 
 function intToIp(int) {
-  const mask = 0b11111111;
+  const mask = 0xff;
   const octets = [
     int >>> 24,
     mask & (int >>> 16),
@@ -181,8 +181,8 @@ function calculateNextIp(ips) {
   const ints = ips.map((it) => ipToInt(it));
   let ip = null;
   for (
-    let i = process.env.FIRST_ASSIGNABLE_IP;
-    i < process.env.LAST_ASSIGNABLE_IP;
+    let i = ipToInt(process.env.FIRST_ASSIGNABLE_IP);
+    i < ipToInt(process.env.LAST_ASSIGNABLE_IP);
     i++
   ) {
     if (!ints.includes(i)) {
