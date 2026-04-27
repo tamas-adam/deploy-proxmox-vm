@@ -203,8 +203,8 @@ function calculateNextIp(ips) {
   return intToIp(ip);
 }
 
-async function run() {
-  console.log("Retrieving next ID...");
+async function run(vmName) {
+  console.log(`Retrieving ID for VM "${vmName}"...`);
   const { data: nextId } = await getNextId();
   console.log(`Assigning ID '${nextId}' to the new VM.`);
 
@@ -217,16 +217,25 @@ async function run() {
   console.log(`Assigning IP '${nextIp}' to the new VM.`);
 
   console.log("Cloning VM...");
-  await cloneTemplate(nextId, "script-test");
+  await cloneTemplate(nextId, vmName);
   console.log("Resizing VM disk...");
   await resizeVm(nextId, "+15G");
   console.log("Applying VM configuration...");
-  await configureVm(nextId, `${nextIp}/24`, "script-test");
+  await configureVm(nextId, `${nextIp}/24`, vmName);
 
   console.log("VM has been cloned successfully, starting...");
   await startVm(nextId);
+  console.log("Done!");
 }
 
-run()
-  .then(() => console.log("Done!"))
-  .catch((err) => console.error(err));
+async function main() {
+  const [_node, _script, vmName] = process.argv;
+  if (!vmName) {
+    console.error("You need to provide a VM name.");
+    return;
+  }
+
+  await run(vmName);
+}
+
+main().catch((err) => console.error(err));
