@@ -6,21 +6,31 @@ config();
 async function pveRequest(method, path, body) {
   return new Promise((resolve, reject) => {
     try {
+      const headers = {
+        Authorization: process.env.PVE_API_TOKEN,
+      };
+
+      const bodyStr = body ? JSON.stringify(body) : null;
+
+      if (body) {
+        headers["Content-Type"] = "application/json";
+        headers["Content-Length"] = Buffer.byteLength(bodyStr);
+      }
+
       const options = {
         hostname: process.env.PVE_HOST,
         port: process.env.PVE_PORT,
         path,
         method,
-        headers: {
-          Authorization: process.env.PVE_API_TOKEN,
-        },
-        body: body ? JSON.stringify(body) : null,
+        headers,
+        body: body ? body : null,
         // Proxmox certificate issue workaround
         rejectUnauthorized: false,
       };
 
       const request = https.request(options, (res) => resolve(res));
 
+      if (body) request.write(bodyStr);
       request.end();
     } catch (error) {
       reject(error);
@@ -38,7 +48,7 @@ async function getJson(response) {
         const json = JSON.parse(raw);
 
         // Errors are returned as { message, errors }
-        if ("errors" in json) {
+        if ("errors" in json || "message" in json) {
           reject(new Error(raw));
         } else {
           resolve(json);
@@ -86,16 +96,18 @@ async function cloneTemplate(newId, name) {
 
 async function resizeVm(vmId, size) {
   return pveJsonRequest(
-    "POST",
-    `/api2/json/nodes/${process.env.PVE_NODE_NAME}/qemu/${vmId}/resize?disk=scsi0&size=${size}`,
+    "PUT",
+    `/api2/json/nodes/${process.env.PVE_NODE_NAME}/qemu/${vmId}/resize?disk=scsi0&size=${encodeURIComponent(size)}`,
   );
 }
 
 async function configureVm(vmId, cidr, name) {
+  const ipconfig0 = `ip=${cidr},gw=10.0.0.1`;
+  console.log(ipconfig0);
   const config = {
     name,
-    searchname: name,
-    ipconfig0: `ip=${cidr},gw=10.0.0.1`,
+    searchdomain: name,
+    ipconfig0,
     cicustom: "user=local:snippets/mattermost-setup.yaml",
     onboot: 1,
   };
@@ -187,7 +199,6 @@ function calculateNextIp(ips) {
 }
 
 async function run() {
-  console.log(process.env.PVE_NODE_NAME);
   console.log("Retrieving next ID...");
   const { data: nextId } = await getNextId();
   console.log(`Assigning ID '${nextId}' to the new VM.`);
@@ -202,7 +213,9 @@ async function run() {
 
   console.log("Cloning VM...");
   await cloneTemplate(nextId, "script-test");
+  console.log("Resizing VM disk...");
   await resizeVm(nextId, "+15G");
+  console.log("Applying VM configuration...");
   await configureVm(nextId, `${nextIp}/24`, "script-test");
   console.log("VM has been cloned successfully!");
 }
