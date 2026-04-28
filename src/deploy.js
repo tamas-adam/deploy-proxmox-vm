@@ -72,17 +72,17 @@ async function getRelevantResources() {
   return pveJsonRequest("GET", "/api2/json/cluster/resources?type=vm");
 }
 
-async function getLxcInterfaces(vmid) {
+async function getLxcInterfaces(vmId) {
   return pveJsonRequest(
     "GET",
-    `/api2/json/nodes/${process.env.PVE_NODE_NAME}/lxc/${vmid}/interfaces`,
+    `/api2/json/nodes/${process.env.PVE_NODE_NAME}/lxc/${vmId}/interfaces`,
   );
 }
 
-async function getQemuConfig(vmid) {
+async function getQemuConfig(vmId) {
   return pveJsonRequest(
     "GET",
-    `/api2/json/nodes/${process.env.PVE_NODE_NAME}/qemu/${vmid}/config`,
+    `/api2/json/nodes/${process.env.PVE_NODE_NAME}/qemu/${vmId}/config`,
   );
 }
 
@@ -100,10 +100,8 @@ async function resizeVm(vmId, size) {
   );
 }
 
-async function configureVm(vmId, cidr, name) {
+async function configureVm(vmId, cidr) {
   const config = {
-    name,
-    searchdomain: name,
     ipconfig0: `ip=${cidr},gw=10.0.0.1`,
     cicustom: "user=local:snippets/mattermost-setup.yaml",
     onboot: 1,
@@ -149,7 +147,7 @@ async function collectIps() {
   );
 
   // Dedupe values
-  return new Set(ips);
+  return [...new Set(ips)];
 }
 
 function ipToInt(ip) {
@@ -172,12 +170,11 @@ function ipToInt(ip) {
 }
 
 function intToIp(int) {
-  const mask = 0xff;
   const octets = [
     int >>> 24,
-    mask & (int >>> 16),
-    mask & (int >>> 8),
-    mask & int,
+    0xff & (int >>> 16),
+    0xff & (int >>> 8),
+    0xff & int,
   ];
 
   return octets.join(".");
@@ -220,7 +217,7 @@ async function run(vmName) {
   console.log("Resizing VM disk...");
   await resizeVm(nextId, "+15G");
   console.log("Applying VM configuration...");
-  await configureVm(nextId, `${nextIp}/24`, vmName);
+  await configureVm(nextId, `${nextIp}/24`);
 
   console.log("VM has been cloned successfully, starting...");
   await startVm(nextId);
@@ -228,7 +225,7 @@ async function run(vmName) {
 }
 
 async function main() {
-  const [_node, _script, vmName] = process.argv;
+  const vmName = process.argv[2];
   if (!vmName) {
     console.error("You need to provide a VM name.");
     return;
