@@ -100,11 +100,11 @@ async function resizeVm(vmId, size) {
   );
 }
 
-async function configureVm(vmId, cidr, ciCustom) {
+async function configureVm(vmId, cidr, ciFile) {
   const config = {
     ipconfig0: `ip=${cidr},gw=10.0.0.1`,
     //cicustom: "user=local:snippets/mattermost-setup.yaml",
-    cicustom: ciCustom,
+    cicustom: `user=local:snippets/${ciFile}`,
     onboot: 1,
   };
 
@@ -209,11 +209,12 @@ function generateCiConfig(vmId, name) {
     .replaceAll("<user>", process.env.VM_USER)
     .replaceAll("<password>", process.env.VM_PASSWD);
 
-  const path = `${process.env.CI_SNIPPETS_PATH}/vm-${vmId}-${name}-${new Date().toISOString()}.yaml`;
+  const file = `vm-${vmId}-${name}-${new Date().toISOString()}.yaml`;
+  const path = `${process.env.CI_SNIPPETS_PATH}/${file}`;
 
   fs.writeFileSync(path, content);
 
-  return path;
+  return file;
 }
 
 async function run(vmName) {
@@ -229,15 +230,15 @@ async function run(vmName) {
   const nextIp = calculateNextIp(ips);
   console.log(`Assigning IP '${nextIp}' to the new VM.`);
 
-  const ciCustom = generateCiConfig(nextId, vmName);
-  console.log(`Generated CI config at "${ciCustom}"`);
+  const ciFile = generateCiConfig(nextId, vmName);
+  console.log(`Generated CI config at "${ciFile}"`);
 
   console.log("Cloning VM...");
   await cloneTemplate(nextId, vmName);
   console.log("Resizing VM disk...");
   await resizeVm(nextId, process.env.RESIZE);
   console.log("Applying VM configuration...");
-  await configureVm(nextId, `${nextIp}/24`);
+  await configureVm(nextId, `${nextIp}/24`, ciFile);
 
   console.log("VM has been cloned successfully, starting...");
   await startVm(nextId);
