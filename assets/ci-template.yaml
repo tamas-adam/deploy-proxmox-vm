@@ -19,18 +19,13 @@ runcmd:
   # 2) Setup mattermost env
   - cp env.example .env
   - sed -i "s/DOMAIN=mm.example.com/DOMAIN=<domain>/" .env
+  - sed -i "s/MM_SERVICESETTINGS_SITEURL=/https:\/\/<domain>" .env
+  - echo "MM_SERVICESETTINGS_ALLOWCORSFROM=*\nMM_SERVICESETTINGS_WEBSOCKETURL=wss:\/\/<domain>" >> .env
 
   # 3) Setup directories and permissions
   # Use /bin/bash, as dash (default on Debian) does not support the below mkdir syntax
   - /bin/bash -c "mkdir -p ./volumes/app/mattermost/{config,data,logs,plugins,client/plugins,bleve-indexes}"
   - chown -R 2000:2000 ./volumes/app/mattermost
 
-  # 4) Let mattermost generate config files
-  - docker compose -f docker-compose.yml -f docker-compose.without-nginx.yml up -d
-  - docker compose -f docker-compose.yml -f docker-compose.without-nginx.yml down
-
-  # 5) Configure mattermost
-  - sed -i "s/SiteURL=\"\"/SiteURL=\"<domain>\"" ./volumes/app/mattermost/config/config.json
-
-  # 6) Start mattermost
+  # 4) Start mattermost
   - docker compose -f docker-compose.yml -f docker-compose.without-nginx.yml up -d
