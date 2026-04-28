@@ -19,8 +19,7 @@ runcmd:
   # 2) Setup mattermost env
   - cp env.example .env
   - sed -i "s/DOMAIN=mm.example.com/DOMAIN=<domain>/" .env
-  - sed -i "s/MM_SERVICESETTINGS_SITEURL=/https:\/\/<domain>" .env
-  - echo "MM_SERVICESETTINGS_ALLOWCORSFROM=*\nMM_SERVICESETTINGS_WEBSOCKETURL=wss:\/\/<domain>" >> .env
+  - echo "MM_SERVICESETTINGS_ALLOWCORSFROM=*\nMM_SERVICESETTINGS_WEBSOCKETURL=wss://${DOMAIN}" >> .env
 
   # 3) Setup directories and permissions
   # Use /bin/bash, as dash (default on Debian) does not support the below mkdir syntax
