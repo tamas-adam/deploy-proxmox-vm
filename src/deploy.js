@@ -1,4 +1,5 @@
 import { config } from "dotenv";
+import fs from "node:fs";
 import https from "node:https";
 
 config();
@@ -43,12 +44,11 @@ async function getJson(response) {
       const chunks = [];
       response.on("data", (it) => chunks.push(it));
       response.on("end", () => {
-        const raw = chunks.join("");
-        const json = JSON.parse(raw);
+        const json = JSON.parse(chunks.join(""));
 
         // Errors are returned as { message, errors }
         if ("errors" in json || "message" in json) {
-          reject(new Error(raw));
+          reject(new Error(json));
         } else {
           resolve(json);
         }
@@ -100,10 +100,11 @@ async function resizeVm(vmId, size) {
   );
 }
 
-async function configureVm(vmId, cidr) {
+async function configureVm(vmId, cidr, ciCustom) {
   const config = {
     ipconfig0: `ip=${cidr},gw=10.0.0.1`,
-    cicustom: "user=local:snippets/mattermost-setup.yaml",
+    //cicustom: "user=local:snippets/mattermost-setup.yaml",
+    cicustom: ciCustom,
     onboot: 1,
   };
 
@@ -199,6 +200,22 @@ function calculateNextIp(ips) {
   return intToIp(ip);
 }
 
+function generateCiConfig(vmId, name) {
+  const template = fs.readFileSync("assets/ci-template.yaml", "utf8");
+  const fqdn = `${name}.${process.env.DOMAIN}`;
+  const content = template
+    .replaceAll("<hostname>", name)
+    .replaceAll("<domain>", fqdn)
+    .replaceAll("<user>", process.env.VM_USER)
+    .replaceAll("<password>", process.env.VM_PASSWD);
+
+  const path = `${process.env.CI_SNIPPETS_PATH}/vm-${vmId}-${name}-${new Date().toISOString()}.yaml`;
+
+  fs.writeFileSync(path, content);
+
+  return path;
+}
+
 async function run(vmName) {
   console.log(`Retrieving ID for VM "${vmName}"...`);
   const { data: nextId } = await getNextId();
@@ -212,10 +229,13 @@ async function run(vmName) {
   const nextIp = calculateNextIp(ips);
   console.log(`Assigning IP '${nextIp}' to the new VM.`);
 
+  const ciCustom = generateCiConfig(nextId, vmName);
+  console.log(`Generated CI config at "${ciCustom}"`);
+
   console.log("Cloning VM...");
   await cloneTemplate(nextId, vmName);
   console.log("Resizing VM disk...");
-  await resizeVm(nextId, "+15G");
+  await resizeVm(nextId, process.env.RESIZE);
   console.log("Applying VM configuration...");
   await configureVm(nextId, `${nextIp}/24`);
 
