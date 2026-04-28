@@ -209,7 +209,7 @@ async function run(vmName) {
   console.log(ips);
 
   console.log("Calculating IP address...");
-  const nextIp = calculateNextIp([...ips]);
+  const nextIp = calculateNextIp(ips);
   console.log(`Assigning IP '${nextIp}' to the new VM.`);
 
   console.log("Cloning VM...");
